@@ -14,22 +14,15 @@ namespace request
 {	
 	class RequestBody 
 	{
-		private string requestBody = "";
-		public string getBody
-		{
-			get { return requestBody; }
-		}
+		public string Body { get; private set; }
+		public RequestBody () { Body = ""; }
 		
-		public void addParam(string key, dynamic val)
+		public void AddParam(string key, dynamic val)
 		{
-			if (requestBody.Length == 0) 
-			{
-				requestBody += String.Format("{0}={1}", key, val);
-			}
+			if (Body.Length == 0) 
+				Body += String.Format("{0}={1}", key, val);
 			else 
-			{
-				requestBody += String.Format("&{0}={1}", key, val);
-			}
+				Body += String.Format("&{0}={1}", key, val);
 		}
 	}
 	class Request 
@@ -41,8 +34,7 @@ namespace request
 			return convertedData;
 		}
 		
-		
-		public static async Task<Dictionary<string, dynamic>> getReq(string url)
+		public static async Task<Dictionary<string, dynamic>> GetReq(string url)
 		{
 			HttpResponseMessage responseBody = await client.GetAsync(url);
 			
@@ -52,9 +44,9 @@ namespace request
 			return result;
 		}
 		
-		public static async Task<Dictionary<string, dynamic>> postReq(string url, RequestBody bodyReq)
+		public static async Task<Dictionary<string, dynamic>> PostReq(string url, RequestBody bodyReq)
 		{
-			var content = new StringContent(bodyReq.getBody, Encoding.UTF8, "application/x-www-form-urlencoded");
+			var content = new StringContent(bodyReq.Body, Encoding.UTF8, "application/x-www-form-urlencoded");
 			HttpResponseMessage responseBody = await client.PostAsync(url, content);
 			
 			var jsonResult = responseBody.Content.ReadAsStringAsync().Result;
