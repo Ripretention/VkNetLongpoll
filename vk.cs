@@ -1,8 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
+
 using Newtonsoft.Json.Linq;
 
 using Req = request.Request;
@@ -13,30 +14,30 @@ namespace vk
 {	
 	class Vk
 	{	
-		private VkConfig vkConfig;
-		public VkApi vkApi;
-		public VkLongPoll vkLongPoll;
+		private VkConfig config;
+		public VkApi Api;
+		public VkLongPoll LongPoll;
 		
 		public Vk(string accessToken, string version, int groupId)
 		{
-			this.vkConfig = new VkConfig(accessToken, version, groupId);
-			this.vkApi = new VkApi(this.vkConfig);
-			this.vkLongPoll = new VkLongPoll(this.vkConfig);
+			config = new VkConfig(accessToken, version, groupId);
+			Api = new VkApi(config);
+			LongPoll = new VkLongPoll(config);
 			
-			VkContextBody.SetConfig(this.vkConfig);
+			VkContextBody.SetConfig(config);
 		}
-		
 	}
+	
 	class VkLongPoll
 	{
-		private VkConfig vkConfig;
+		private VkConfig config;
 		private List<Dictionary<string, dynamic>> commandList = new List<Dictionary<string, dynamic>>();
 		private List<Dictionary<string, dynamic>> eventHandlerList = new List<Dictionary<string, dynamic>>();
 		private Action<dynamic, dynamic> handlerMessageFunc;
 		
 		public VkLongPoll(VkConfig vkCfg)
 		{
-			this.vkConfig = vkCfg;
+			config = vkCfg;
 		}
 		
 		public void handlerMessage(Action<dynamic, dynamic> handlerMessageFunc)
@@ -46,7 +47,7 @@ namespace vk
 		public void handlerEvent(string eventName, Action<dynamic> callback)
 		{
 			Dictionary<string, dynamic> eventBody = new Dictionary<string, dynamic>{ {eventName, callback} };
-			this.eventHandlerList.Add(eventBody);
+			eventHandlerList.Add(eventBody);
 		}
 		public void command(dynamic target, Action<dynamic, dynamic> callback) 
 		{
@@ -55,41 +56,43 @@ namespace vk
 				{"target", target},
 				{"callback", callback}
 			};
-			this.commandList.Add(commandBody);
+			commandList.Add(commandBody);
 		}
 		
 		private void handlingMessage(dynamic msgData)
 		{
 			bool dropedMsg = false;
 			Action dropFunc = (() => { dropedMsg = true; });
-
-			VkContextBody context = new VkContextBody(msgData["object"]);	
-			if (this.handlerMessageFunc != null)
-			{
-				this.handlerMessageFunc(context, dropFunc);
-			}
 			
-			if (context.isEvent && this.eventHandlerList.Count != 0 && !dropedMsg)
+			VkContextBody context = new VkContextBody(msgData["object"]["message"]);
+			if (handlerMessageFunc != null) handlerMessageFunc(context, dropFunc);
+			
+			if (context.IsEvent && eventHandlerList.Count != 0 && !dropedMsg)
 			{
-				foreach (Dictionary<string, dynamic> element in this.eventHandlerList)
+				foreach (Dictionary<string, dynamic> element in eventHandlerList)
 				{
-					if (element.ContainsKey(context.eventType))
+					if (element.ContainsKey(context.EventType))
 					{
-						element[context.eventType](context);
+						element[context.EventType](context);
 						dropFunc();
 					}
 				}
 			}
 			
 			if (dropedMsg) return;
-			foreach (Dictionary<string, dynamic> element in this.commandList)
+			foreach (Dictionary<string, dynamic> element in commandList)
 			{	
-				bool isStringTarget = (element["target"] is string && context.text.Contains(element["target"]));
-				bool isRegexTarget = (element["target"] is Regex && element["target"].IsMatch(context.text));
+				bool isStringTarget = (element["target"] is string && context.Text.Contains(element["target"]));
+				bool isRegexTarget = (element["target"] is Regex && element["target"].IsMatch(context.Text));
 				
-				bool isCommand = (isStringTarget || isRegexTarget);             
+				bool isCommand = (isStringTarget || isRegexTarget);
 				if (isCommand && !dropedMsg)
 				{
+					if (isRegexTarget) 
+					{
+						context.Match = element["target"].Match(context.Text);
+					}
+					
 					ThreadPool.QueueUserWorkItem(state => element["callback"](context, dropFunc));
 				}
 			}
@@ -97,24 +100,22 @@ namespace vk
 		
 		public async Task<string> getLongPollUrlConnection()
 		{	
-			VkApi vkApi = new VkApi(this.vkConfig);
-
-			RequestBody reqBody = new RequestBody();
-			var res = await vkApi.callMethod("groups.getLongPollServer", reqBody);
+			VkApi vkApi = new VkApi(config);
 			
+			var res = await vkApi.callMethod("groups.getLongPollServer", new RequestBody());
 			return String.Format("{0}?act=a_check&key={1}&ts={2}&wait=25", res["server"], res["key"], res["ts"]);
 		}
 		
 		public async Task startLongPoll()
 		{
-			if (!this.vkConfig.isValid()) throw new Exception("not valid vkCfg in LongPoll");
+			if (!config.Valid()) throw new Exception("not valid vkCfg in LongPoll");
 			
 			string longPollUrlConn = await this.getLongPollUrlConnection();
 			
 			string lastTs = "";
 			while (true)
 			{
-				var msgData = await Req.getReq(longPollUrlConn);
+				var msgData = await Req.GetReq(longPollUrlConn);
 				
 				if (msgData["ts"] == lastTs) continue;
 				lastTs = msgData["ts"];
@@ -126,79 +127,66 @@ namespace vk
 	class VkApi
 	{
 		private const string methodsUrl = "https://api.vk.com/method";
-		
-		private VkConfig vkConfig;
+		private VkConfig config;
+
 		public VkApi(VkConfig vkCfg)
 		{
-			this.vkConfig = vkCfg;
+			config = vkCfg;
 		}
 		
 		public async Task<dynamic> callMethod(string nameMethod, RequestBody bodyMethod)
 		{	
-			if (!this.vkConfig.isValid()) throw new Exception("vkConfig is null");
+			if (!config.Valid()) throw new Exception("vkConfig is null");
 				
 			string url = String.Format("{0}/{1}", methodsUrl, nameMethod);
 			
-			bodyMethod.addParam("access_token", vkConfig.token);
-			bodyMethod.addParam("v", vkConfig.v);
-			bodyMethod.addParam("group_id", vkConfig.gId);
-			
-			Dictionary<string, dynamic> response = await Req.postReq(url, bodyMethod);
-			if (response.ContainsKey("error"))
-			{	
-				Console.WriteLine(Convert.ToString(response["error"]));
-			}
+			bodyMethod.AddParam("access_token", config.AccessToken);
+			bodyMethod.AddParam("v", config.Version);
+			bodyMethod.AddParam("group_id", config.GroupId);
+
+			Dictionary<string, dynamic> response = await Req.PostReq(url, bodyMethod);
+			if (response.ContainsKey("error")) throw new Exception(String.Format("Code: {0} \n In method: {1} \n Message: {2}", response["error"]["error_code"], nameMethod, response["error"]["error_msg"]));
 			
 			if (!response.ContainsKey("response")) return response;
-			
 			return response["response"];
 		}
 	}
+	
 	class VkConfig
 	{
-		private string accessToken = "";
-		private string version = "";
-		private int groupId = 0;
+		public string AccessToken { get; private set; }
+		public string Version { get; private set; }
+		public int GroupId { get; private set; }
 		
-		public string token
+		public bool Valid()
 		{
-			get { return this.accessToken; }
-		}
-		public string v
-		{
-			get { return this.version; }
-		}
-		public int gId
-		{
-			get { return this.groupId; }
-		}
-		public bool isValid()
-		{
-			return (this.accessToken.Length > 0 && this.version.Length > 0 && this.groupId > 0);
+			return (AccessToken != null && Version != null && GroupId != null);
 		}
 		
 		public VkConfig(string accessToken, string version, int groupId)
 		{
-			if (accessToken == null) throw new Exception("vkConfig is null");
-			
-			this.accessToken = accessToken;
-			this.version = version;
-			this.groupId = groupId;
+			AccessToken = accessToken;
+			Version = version;
+			GroupId = groupId;
 		}
 	}
+	
 	class VkContextBody
 	{	
 		static VkConfig vkConfig;
 		
-		public string text;
-		public int date;
-		public int peerId;
-		public int senderId;
-		public int senderType;
-		public int chatId;
+		public string Text;
+		public int Date;
+		public int PeerId;
+		public int SenderId;
+		public int SenderType;
+		public int ChatId;
 		
-		public string eventType;
-		public int eventMemberId;
+		public string EventType;
+		public int EventMemberId;
+		public Match Match;
+		
+		public bool IsEvent { get { return (EventType != null); } }
 		
 		static public Dictionary<string, dynamic> properties = new Dictionary<string, dynamic>();
         public dynamic this[string name] 
@@ -213,40 +201,40 @@ namespace vk
             }
             set 
             {
-				Console.WriteLine(value);
                 properties[name] = value;
             }
         }
 		
 		public VkContextBody(JObject msgData)
 		{
-			this.text = (string)msgData["text"];
-			this.date = (int)msgData["date"];
-			this.peerId = (int)msgData["peer_id"];
-			this.senderId = (int)msgData["from_id"];
-			this.chatId = this.convertPeerIdToChatId(this.peerId);
-			this.senderType = (this.senderId > 0) ? 1 : 0;
+			Text = (string)msgData["text"];
+			Date = (int)msgData["date"];
+			PeerId = (int)msgData["peer_id"];
+			SenderId = (int)msgData["from_id"];
+			
+			ChatId = convertPeerIdToChatId(PeerId);
+			SenderType = (SenderId > 0) ? 1 : 0;
 			
 			if (msgData["action"] != null)
 			{
-				this.eventType = (string)msgData["action"]["type"];
-				this.eventMemberId = (int)msgData["action"]["member_id"];
+				EventType = (string)msgData["action"]["type"];
+				EventMemberId = (int)msgData["action"]["member_id"];
 			}
 		}
 		
-		public async Task msgSend(string msgText) 
+		public async Task SendMsg(string msgText) 
 		{
 			VkApi vkApi = new VkApi(vkConfig);
 			
 			RequestBody reqBody = new RequestBody();
-			reqBody.addParam("message", msgText);
-			reqBody.addParam("random_id", UtilsMath.getRandomInt());
-			reqBody.addParam("peer_id", this.peerId);
+			reqBody.AddParam("message", msgText);
+			reqBody.AddParam("random_id", UtilsMath.getRandomInt());
+			reqBody.AddParam("peer_id", PeerId);
 			
 			await vkApi.callMethod("messages.send", reqBody);
 		}
 		
-		public int convertPeerIdToChatId(int peerId)
+		private int convertPeerIdToChatId(int peerId)
 		{
 			MatchCollection matches = Regex.Matches(Convert.ToString(peerId), @"20+(\d+)");
 			
@@ -257,11 +245,6 @@ namespace vk
 		static public void SetConfig(VkConfig vkCfg)
 		{
 			vkConfig = vkCfg;
-		}
-		
-		public bool isEvent
-		{
-			get { return (this.eventType != null); }
 		}
 	}
 }
