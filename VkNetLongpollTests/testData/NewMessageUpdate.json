@@ -1,0 +1,37 @@
+﻿{
+  "type": "message_new",
+  "object": {
+    "message": {
+      "date": 1635458878,
+      "from_id": 1,
+      "id": 0,
+      "out": 0,
+      "peer_id": 2000000018,
+      "text": "test-message",
+      "conversation_message_id": 25282,
+      "fwd_messages": [],
+      "important": false,
+      "random_id": 0,
+      "attachments": [],
+      "is_hidden": false
+    },
+    "client_info": {
+      "button_actions": [
+        "text",
+        "vkpay",
+        "open_app",
+        "location",
+        "open_link",
+        "callback",
+        "intent_subscribe",
+        "intent_unsubscribe"
+      ],
+      "keyboard": true,
+      "inline_keyboard": true,
+      "carousel": true,
+      "lang_id": 0
+    }
+  },
+  "group_id": 1,
+  "event_id": "test"
+}
