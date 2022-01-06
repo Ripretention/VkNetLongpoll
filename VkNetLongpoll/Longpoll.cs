@@ -62,7 +62,7 @@ namespace VkNetLongpoll
 
                 connection.Ts = response.Ts;
                 foreach (var longpollEvent in response.Updates)
-                    Handler?.Handle(longpollEvent);
+                    Handler?.Handle(longpollEvent, api);
             }
         }
     }

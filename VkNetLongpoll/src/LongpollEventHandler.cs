@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using VkNet.Abstractions;
 using System.Threading.Tasks;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Model.GroupUpdate;
@@ -12,12 +13,13 @@ namespace VkNetLongpoll
         private MiddlewareChain<dynamic> events = new MiddlewareChain<dynamic>();
         private MiddlewareChain<MessageContext> commands = new MiddlewareChain<MessageContext>();
 
-        public async Task Handle(GroupUpdate longpollEvent)
+        public async Task Handle(GroupUpdate longpollEvent, IVkApi api = null)
         {
             await events.ExecuteAsync(longpollEvent);
                 
             if (longpollEvent.MessageNew == null) return;
             var message = new MessageContext(longpollEvent);
+            message.Api = api;
             await commands.ExecuteAsync(message);
         }
 
@@ -111,7 +113,7 @@ namespace VkNetLongpoll
             var textMatches = (handlerParams?.texts ?? new[] { String.Empty }).Append(handlerParams?.text);
 
             return (handlerParams?.regex?.IsMatch(body.Text) ?? true) || (textMatches?.Count() > 0 && textMatches.Contains(body.Text));
-        }        
+        }
     }
     public class EventMessageHandlerParams
     {
