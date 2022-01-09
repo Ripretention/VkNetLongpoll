@@ -114,6 +114,13 @@ namespace VkNetLongpoll
 
             return (handlerParams?.regex?.IsMatch(body.Text) ?? true) || (textMatches?.Count() > 0 && textMatches.Contains(body.Text));
         }
+        public override Task Handle(MessageContext evt, Action next = null)
+        {
+            if (handlerParams?.regex?.IsMatch(evt.Body.Text) ?? false)
+                evt.Match = handlerParams.regex.Match(evt.Body.Text);
+
+            return base.Handle(evt, next);
+        }
     }
     public class EventMessageHandlerParams
     {

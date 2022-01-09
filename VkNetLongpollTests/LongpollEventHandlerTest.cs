@@ -65,6 +65,25 @@ namespace VkNetLongpollTests
         }
 
         [Test]
+        public async Task CommandHandlingMatchTest()
+        {
+            int regexGroupsCount = 0;
+            var lpHandler = new LongpollEventHandler();
+            lpHandler.HearCommand(new EventMessageHandlerParams
+            {
+                regex = new Regex(@"^\/test (foo) (\d) (s|f)", RegexOptions.IgnoreCase)
+            }, (ctx, next) =>
+            {
+                regexGroupsCount = ctx.Match.Groups.Count;
+                return Task.CompletedTask;
+            });
+
+            lpMessageNewEvent.MessageNew.Message.Text = "/test foo 3 s";
+            await lpHandler.Handle(lpMessageNewEvent);
+            Assert.AreEqual(4, regexGroupsCount);
+        }
+
+        [Test]
         public async Task EventHandlingTest()
         {
             int eventsHandled = 0;

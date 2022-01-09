@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Linq;
 using VkNet.Model;
 using System.Net.Http;
 using VkNet.Abstractions;
 using System.Threading.Tasks;
+using VkNet.Enums.SafetyEnums;
 using VkNet.Model.GroupUpdate;
 using VkNet.Model.RequestParams;
+using System.Text.RegularExpressions;
 
 namespace VkNetLongpoll
 {
@@ -13,6 +16,7 @@ namespace VkNetLongpoll
         public readonly Message Body;
         public readonly ClientInfo ClientInfo;
         public IVkApi Api;
+        public Match Match;
 
         public MessageContext(GroupUpdate rawEvent) : this(rawEvent.MessageNew) { }
         public MessageContext(MessageNew rawMessage)
@@ -20,6 +24,8 @@ namespace VkNetLongpoll
             Body = rawMessage.Message;
             ClientInfo = rawMessage.ClientInfo;
         }
+
+        public bool IsChat { get => Body.PeerId > 2e9; }
 
         public long Send(string text) => Send(new MessagesSendParams { Message = text });
         public long Send(MessagesSendParams @params)
@@ -42,9 +48,14 @@ namespace VkNetLongpoll
             @params.Forward = new MessageForward
             {
                 IsReply = true,
-                PeerId = Body.PeerId,
-                ConversationMessageIds = new long[] { (Body.PeerId > 2e9 ? Body.ConversationMessageId : Body.Id).Value }
+                PeerId = Body.PeerId
             };
+            if (IsChat)
+                @params.Forward.ConversationMessageIds = new[] { Body.ConversationMessageId.Value };
+            else
+                @params.Forward.MessageIds = new[] { Body.Id.Value };
+
+
             return Send(@params);
         }
         public Task<long> ReplyAsync(string text) => ReplyAsync(new MessagesSendParams { Message = text });
@@ -53,16 +64,20 @@ namespace VkNetLongpoll
             @params.Forward = new MessageForward
             {
                 IsReply = true,
-                PeerId = Body.PeerId,
-                ConversationMessageIds = new long[] { (Body.PeerId > 2e9 ? Body.ConversationMessageId : Body.Id).Value }
+                PeerId = Body.PeerId
             };
+            if (IsChat)
+                @params.Forward.ConversationMessageIds = new[] { Body.ConversationMessageId.Value };
+            else
+                @params.Forward.MessageIds = new[] { Body.Id.Value };
+
             return SendAsync(@params);
         }
 
         public Task<long> SendPhoto(byte[] photo, string text) => SendPhoto(photo, new MessagesSendParams { Message = text });
         public async Task<long> SendPhoto(byte[] photo, MessagesSendParams @params = null)
         {
-            var uploadServer = Api.Photo.GetMessagesUploadServer(Body.PeerId.Value);
+            var uploadServer = await Api.Photo.GetMessagesUploadServerAsync(Body.PeerId.Value);
             var client = new HttpClient();
 
             var form = new MultipartFormDataContent();
@@ -70,11 +85,67 @@ namespace VkNetLongpoll
             form.Add(new ByteArrayContent(photo, 0, photo.Length), "photo", "file.jpg");
 
             var photoResponse = await (await client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
-            (@params ??= new MessagesSendParams()).Attachments = Api.Photo.SaveMessagesPhoto(photoResponse);
+            (@params ??= new MessagesSendParams()).Attachments = await Api.Photo.SaveMessagesPhotoAsync(photoResponse);
             return await SendAsync(@params);
         }
 
+        public Task<long> SendDoc(DocumentSource doc, string text, DocMessageType docType = null) =>
+            SendDoc(doc, new MessagesSendParams { Message = text }, docType);
+        public async Task<long> SendDoc(DocumentSource doc, MessagesSendParams @params = null, DocMessageType docType = null)
+        {
+            var uploadServer = await Api.Docs.GetMessagesUploadServerAsync(Body.PeerId.Value, docType ?? DocMessageType.Doc);
+            var client = new HttpClient();
+
+            var form = new MultipartFormDataContent();
+            form.Headers.ContentType.MediaType = "multipart/form-data";
+            form.Add(new ByteArrayContent(doc.Body, 0, doc.Body.Length), doc.Name, $"{doc.Name}.{doc.Type.Replace('.', '\0')}");
+
+            var response = await (await client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
+            (@params ??= new MessagesSendParams()).Attachments = (await Api.Docs.SaveAsync(response, doc.Name, "")).Select(a => a.Instance);
+            return await SendAsync(@params);
+        }
+
+        public Task<long> SendAudioMessage(byte[] audio, MessagesSendParams @params = null) =>
+            SendDoc(new DocumentSource { Type = "mp3", Body = audio }, @params);
+
+        public bool Edit(string text) => Edit(new MessageEditParams { Message = text });
+        public bool Edit(MessageEditParams @params)
+        {
+            @params.PeerId = Body.PeerId.Value;
+            if (Body.PeerId > 2e9)
+                @params.ConversationMessageId = Body.ConversationMessageId.Value;
+            else
+                @params.MessageId = Body.Id.Value;
+
+            return Api.Messages.Edit(@params);
+        }
+        public Task<bool> EditAsync(string text) => EditAsync(new MessageEditParams { Message = text });
+        public Task<bool> EditAsync(MessageEditParams @params)
+        {
+            @params.PeerId = Body.PeerId.Value;
+            if (Body.PeerId > 2e9)
+                @params.ConversationMessageId = Body.ConversationMessageId.Value;
+            else
+                @params.MessageId = Body.Id.Value;
+
+            return Api.Messages.EditAsync(@params);
+        }
+
+        public bool Delete(bool deleteFoAll = true, bool isSpam = false) => (IsChat
+            ? Api.Messages.Delete(new[] { (ulong)Body.ConversationMessageId }, (ulong)Body.PeerId, isSpam, null, deleteFoAll)
+            : Api.Messages.Delete(new[] { (ulong)Body.Id }, isSpam, null, deleteFoAll))?.FirstOrDefault().Value ?? false;
+        public async Task<bool> DeleteAsync(bool deleteFoAll = true, bool isSpam = false) => (IsChat
+            ? await Api.Messages.DeleteAsync(new[] { (ulong)Body.ConversationMessageId }, (ulong)Body.PeerId, isSpam, null, deleteFoAll)
+            : await Api.Messages.DeleteAsync(new[] { (ulong)Body.Id }, isSpam, null, deleteFoAll))?.FirstOrDefault().Value ?? false;
+
         public static explicit operator MessageContext(GroupUpdate rawEvent) => new MessageContext(rawEvent);
         public static explicit operator MessageContext(MessageNew rawMessage) => new MessageContext(rawMessage);
+    }
+
+    public class DocumentSource
+    {
+        public string Type;
+        public byte[] Body;
+        public string Name = "file";
     }
 }
