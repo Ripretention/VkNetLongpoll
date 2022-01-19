@@ -33,7 +33,7 @@ namespace VkNetLongpollTests
             lpHandler.HearCommand("/test", testCommandHandler);
             lpHandler.HearCommand(new Regex(@"^\/test"), testCommandHandler);
             lpHandler.HearCommand(new[] { "/test", "/test2" }, testCommandHandler);
-            lpHandler.HearCommand(new EventMessageHandlerParams { text = "/test", texts = new[] { "/test2" }, regex = new Regex(@"^\/test") }, testCommandHandler);
+            lpHandler.HearCommand(new EventMessageMatchPattern { Text = "/test", Texts = new[] { "/test2" }, Regex = new Regex(@"^\/test") }, testCommandHandler);
 
             Assert.AreEqual(4, lpHandler.CommandsCount);
         }
@@ -43,10 +43,10 @@ namespace VkNetLongpollTests
         {
             int commandsHandled = 0;
             var lpHandler = new LongpollEventHandler();
-            lpHandler.HearCommand(new EventMessageHandlerParams { 
-                text = "/test1", 
-                texts = new[] { "/test2", "test/3" },
-                regex = new Regex(@"^\/test foo$", RegexOptions.IgnoreCase)
+            lpHandler.HearCommand(new EventMessageMatchPattern { 
+                Text = "/test1", 
+                Texts = new[] { "/test2", "test/3" },
+                Regex = new Regex(@"^\/test foo$", RegexOptions.IgnoreCase)
             }, (ctx, next) =>
             {
                 next();
@@ -69,9 +69,9 @@ namespace VkNetLongpollTests
         {
             int regexGroupsCount = 0;
             var lpHandler = new LongpollEventHandler();
-            lpHandler.HearCommand(new EventMessageHandlerParams
+            lpHandler.HearCommand(new EventMessageMatchPattern
             {
-                regex = new Regex(@"^\/test (foo) (\d) (s|f)", RegexOptions.IgnoreCase)
+                Regex = new Regex(@"^\/test (foo) (\d) (s|f)", RegexOptions.IgnoreCase)
             }, (ctx, next) =>
             {
                 regexGroupsCount = ctx.Match.Groups.Count;

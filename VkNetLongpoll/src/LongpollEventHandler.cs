@@ -28,23 +28,23 @@ namespace VkNetLongpoll
         public void On<T>(GroupUpdateType eventType, Func<T, Task> handler) =>
             On<T>(eventType, (context, next) => handler(context));
 
-        public void HearCommand(EventMessageHandlerParams handlerParams, Func<MessageContext, Action, Task> handler) =>
+        public void HearCommand(EventMessageMatchPattern handlerParams, Func<MessageContext, Action, Task> handler) =>
             commands.Use(new EventMessageHandler(handlerParams, handler));
         public void HearCommand(Regex regex, Func<MessageContext, Action, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { regex = regex }, handler);
+            HearCommand(new EventMessageMatchPattern() { Regex = regex }, handler);
         public void HearCommand(string textMatch, Func<MessageContext, Action, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { text = textMatch }, handler);
+            HearCommand(new EventMessageMatchPattern() { Text = textMatch }, handler);
         public void HearCommand(string[] textMatches, Func<MessageContext, Action, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { texts = textMatches }, handler);
+            HearCommand(new EventMessageMatchPattern() { Texts = textMatches }, handler);
 
-        public void HearCommand(EventMessageHandlerParams handlerParams, Func<MessageContext, Task> handler) =>
+        public void HearCommand(EventMessageMatchPattern handlerParams, Func<MessageContext, Task> handler) =>
             HearCommand(handlerParams, (context, next) => handler(context));
         public void HearCommand(Regex regex, Func<MessageContext, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { regex = regex }, handler);
+            HearCommand(new EventMessageMatchPattern() { Regex = regex }, handler);
         public void HearCommand(string textMatch, Func<MessageContext, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { text = textMatch }, handler);
+            HearCommand(new EventMessageMatchPattern() { Text = textMatch }, handler);
         public void HearCommand(string[] textMatches, Func<MessageContext, Task> handler) =>
-            HearCommand(new EventMessageHandlerParams() { texts = textMatches }, handler);
+            HearCommand(new EventMessageMatchPattern() { Texts = textMatches }, handler);
 
         public int CommandsCount { get => commands.Count; }
         public int EventsCount { get => events.Count; }
@@ -100,33 +100,37 @@ namespace VkNetLongpoll
     }
     class EventMessageHandler : BaseEventHandler<MessageContext, MessageNew>
     {
-        private readonly EventMessageHandlerParams handlerParams;
-        public EventMessageHandler(EventMessageHandlerParams handlerParams, Func<MessageContext, Action, Task> handler) : base(handler)
+        private readonly EventMessageMatchPattern matchPattern;
+        public EventMessageHandler(EventMessageMatchPattern matchPattern, Func<MessageContext, Action, Task> handler) : base(handler)
         {
-            this.handlerParams = handlerParams;
+            this.matchPattern = matchPattern;
         }
         public override bool IsMatch(MessageContext message)
         {
             var body = message.Body;
-            if (!(body?.Text?.Any() ?? false)) 
-                return false;
-            var textMatches = (handlerParams?.texts ?? new[] { String.Empty }).Append(handlerParams?.text);
 
-            return (handlerParams?.regex?.IsMatch(body.Text) ?? true) || (textMatches?.Count() > 0 && textMatches.Contains(body.Text));
+            bool hasAttachment = !(matchPattern?.Attachments ?? Array.Empty<Type>()).Any() || (body.Attachments.Any() && matchPattern.Attachments.All(aType => body.Attachments.Any(a => a.Type == aType)));
+            if (!hasAttachment || !(matchPattern?.Predicate?.Invoke(body) ?? true) || !(body?.Text?.Any() ?? false))
+                return false;
+
+            var textMatches = (matchPattern?.Texts ?? new[] { String.Empty }).Append(matchPattern?.Text);
+            return (matchPattern?.Regex?.IsMatch(body.Text) ?? true) || (textMatches?.Count() > 0 && textMatches.Contains(body.Text));
         }
         public override Task Handle(MessageContext evt, Action next = null)
         {
-            if (handlerParams?.regex?.IsMatch(evt.Body.Text) ?? false)
-                evt.Match = handlerParams.regex.Match(evt.Body.Text);
+            if (matchPattern?.Regex?.IsMatch(evt.Body.Text) ?? false)
+                evt.Match = matchPattern.Regex.Match(evt.Body.Text);
 
             return base.Handle(evt, next);
         }
     }
-    public class EventMessageHandlerParams
+    public class EventMessageMatchPattern
     {
-        public Regex regex;
-        public string text;
-        public string[] texts;
+        public Regex Regex;
+        public string Text;
+        public string[] Texts;
+        public Type[] Attachments;
+        public Func<VkNet.Model.Message, bool> Predicate;
     }
     interface IEventHandler<T>
     {
