@@ -43,25 +43,40 @@ namespace VkNetLongpollTests
         {
             int commandsHandled = 0;
             var lpHandler = new LongpollEventHandler();
-            lpHandler.HearCommand(new EventMessageMatchPattern { 
-                Text = "/test1", 
-                Texts = new[] { "/test2", "test/3" },
-                Regex = new Regex(@"^\/test foo$", RegexOptions.IgnoreCase)
-            }, (ctx, next) =>
+            Func<MessageContext, Action, Task> cmdHandler = (ctx, next) =>
             {
                 next();
                 commandsHandled++;
                 return Task.CompletedTask;
-            });
+            };
+            lpHandler.HearCommand(new EventMessageMatchPattern { 
+                Text = "/test1", 
+                Texts = new[] { "/test2", "test/3" },
+                Regex = new Regex(@"^\/test foo$", RegexOptions.IgnoreCase)
+            }, cmdHandler);
+            lpHandler.HearCommand(new EventMessageMatchPattern
+            {
+                Regex = new Regex(@"^\/msg (.*)"),
+                Predicate = ctx => ctx.Text.Length <= 10
+            }, cmdHandler);
+            lpHandler.HearCommand(new EventMessageMatchPattern
+            {
+                Text = "/copy img",
+                Attachments = new[] { typeof(VkNet.Model.Attachments.Photo) }
+            }, cmdHandler);
 
-            var commands = new[] { "/test1", "/test2", "test/3", "/test foo", "/tesT foo", "not a cmd", "not a cmd2" };
+            var commands = new[] { "/test1", "/test2", "test/3", "/test foo", "/tesT foo", "", "not a cmd", "not a cmd2", "/msg succ", "/msg failed" };
             foreach (var command in commands)
             {
                 lpMessageNewEvent.MessageNew.Message.Text = command;
                 await lpHandler.Handle(lpMessageNewEvent);
             }
+            lpMessageNewEvent.MessageNew.Message.Text = "/copy img";
+            await lpHandler.Handle(lpMessageNewEvent);
+            lpMessageNewEvent.MessageNew.Message.Attachments = new System.Collections.ObjectModel.ReadOnlyCollection<VkNet.Model.Attachments.Attachment>(new[] { new VkNet.Model.Attachments.Attachment { Type = typeof(VkNet.Model.Attachments.Photo) } });
+            await lpHandler.Handle(lpMessageNewEvent);
 
-            Assert.AreEqual(5, commandsHandled);
+            Assert.AreEqual(7, commandsHandled);
         }
 
         [Test]

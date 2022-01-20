@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Moq;
+using System;
 using VkNetLongpoll;
 using NUnit.Framework;
 using VkNet.Abstractions;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Model.GroupUpdate;
 using VkNet.Model.RequestParams;
-using Moq;
 using VkNetLongpollTests.Utils;
 
 namespace VkNetLongpollTests
