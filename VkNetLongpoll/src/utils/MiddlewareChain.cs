@@ -13,6 +13,8 @@ namespace VkNetLongpoll
         /// </summary>
         public MiddlewareChain<T> Use(Middleware<T> middleware) 
         {
+            if (middleware == null)
+                throw new ArgumentNullException(nameof(middleware));
             middlewares.Add(middleware);
             return this;
         }
@@ -27,12 +29,18 @@ namespace VkNetLongpoll
         /// </summary>
         public void Execute(T context)
         {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
             foreach (var middleware in middlewares)
                 if (!middleware.Call(context))
                     break;
         }
         public async Task ExecuteAsync(T context)
         {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
             foreach (var middleware in middlewares)
                 if (!await middleware.CallAsync(context))
                     break;
@@ -45,10 +53,13 @@ namespace VkNetLongpoll
         private readonly Func<T, Action, dynamic> fn;
         public Middleware(Func<T, Action, dynamic> fn)
         {
-            this.fn = fn;
+            this.fn = fn ?? throw new ArgumentNullException(nameof(fn));
         }
         public Middleware(Action<T, Action> fn)
         {
+            if (fn == null)
+                throw new ArgumentNullException(nameof(fn));
+
             this.fn = (ctx, next) =>
             {
                 fn(ctx, next);

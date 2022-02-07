@@ -105,8 +105,15 @@ namespace VkNetLongpoll
             return await SendAsync(@params);
         }
 
+        /// <param name="audio">Audio body. Should be encoded to mp3 by default.</param>
         public Task<long> SendAudioMessage(byte[] audio, MessagesSendParams @params = null) =>
-            SendDoc(new DocumentSource { Type = "mp3", Body = audio }, @params);
+            SendAudioMessage(audio, "mp3", @params);
+
+        /// <param name="audio">VKAPI supports only mp3 and ogg as type for an audio message.</param>
+        public Task<long> SendAudioMessage(byte[] audio, string type, MessagesSendParams @params = null) =>
+            type != "mp3" && type != "ogg"
+                ? throw new ArgumentException("Invalid audio type. VKAPI supports only mp3 and ogg as type for an audio message.")
+                : SendDoc(new DocumentSource { Type = type, Body = audio }, @params);
 
         public bool Edit(string text) => Edit(new MessageEditParams { Message = text });
         public bool Edit(MessageEditParams @params)

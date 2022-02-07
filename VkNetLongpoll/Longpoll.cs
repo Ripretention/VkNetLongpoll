@@ -1,9 +1,10 @@
 ﻿using System;
-using System.Threading.Tasks;
 using VkNet.Utils;
 using VkNet.Model;
-using VkNet.Abstractions;
 using VkNet.Exception;
+using System.Threading;
+using VkNet.Abstractions;
+using System.Threading.Tasks;
 
 namespace VkNetLongpoll
 {
@@ -11,12 +12,15 @@ namespace VkNetLongpoll
     {
         public bool isStarted { get; private set; } = false;
 
-        private readonly ulong groupId;
         private readonly IVkApi api;
+        private readonly ulong groupId;
         private LongpollConnection connection;
+        private static Mutex mutex = new Mutex();
         public LongpollEventHandler Handler = new LongpollEventHandler();
         public Longpoll(IVkApi api, long groupId)
         {
+            if (api == null)
+                throw new ArgumentNullException(nameof(api));
             if (!api.IsAuthorized)
                 throw new ArgumentException("API must be authorized");
 
@@ -25,16 +29,18 @@ namespace VkNetLongpoll
             connection = new LongpollConnection(ref this.api, this.groupId);
         }
 
-        public async void Start() 
+        public async Task Start() 
         {
             if (isStarted) return;
+
+            mutex.WaitOne();
 
             isStarted = true;
             await connection.Create();
             await runPollingLoop();
-        }
-        public Task StartAsync() => Task.Run(Start);
-        
+
+            mutex.ReleaseMutex();
+        }        
         public void Stop()
         {
             isStarted = false;
@@ -47,7 +53,7 @@ namespace VkNetLongpoll
                 BotsLongPollHistoryResponse response;
                 try
                 {
-                    response = BotsLongPollHistoryResponse.FromJson(await api.CallLongPollAsync(connection.Server, connection.Params));
+                    response = BotsLongPollHistoryResponse.FromJson(await api.CallLongPollAsync(connection.Server, (VkParameters)connection));
                 }
                 catch (LongPollOutdateException exception) 
                 {
@@ -69,12 +75,12 @@ namespace VkNetLongpoll
 
     class LongpollConnection
     {
+        public ulong WaitMs = 25;
         private readonly IVkApi api;
         private readonly ulong groupId;
-        public ulong WaitMs = 25;
-        public string Ts = null;
-        public string Server = null;
-        public string Key = null;
+        public string Ts { get; set; }
+        public string Key { get; private set; }
+        public string Server { get; private set; }
         public LongpollConnection(ref IVkApi api, ulong groupId)
         {
             this.api = api;
@@ -88,12 +94,13 @@ namespace VkNetLongpoll
             Key = response.Key;
             Server = response.Server;
         }
-        public VkParameters Params
-        {
-            get => new VkParameters
+
+        public static explicit operator VkParameters(LongpollConnection connection) => new VkParameters
             {
-                { "ts", Ts }, { "key", Key }, { "act", "a_check" }, { "wait", Convert.ToString(WaitMs) }
+                { "act", "a_check" }, 
+                { "ts", connection.Ts }, 
+                { "key", connection.Key }, 
+                { "wait", Convert.ToString(connection.WaitMs) }
             };
-        }
     }
 }
