@@ -2,6 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Authors>Ripretention</Authors>
+    <Description>VkNet Longpoll - This is flexible plugin VkNet that allows you to easily interact with VKontakte API Longpoll.</Description>
+    <Copyright></Copyright>
+    <PackageProjectUrl>https://github.com/Ripretention/VkNetLongpoll</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Ripretention/VkNetLongpoll</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>Vk VkAPI VkAPILongpoll</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

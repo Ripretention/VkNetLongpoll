@@ -113,8 +113,8 @@ namespace VkNetLongpoll
             if (!hasAttachment || !(matchPattern?.Predicate?.Invoke(body) ?? true) || !(body?.Text?.Any() ?? false))
                 return false;
 
-            var textMatches = (matchPattern?.Texts ?? new[] { String.Empty }).Append(matchPattern?.Text);
-            return (matchPattern?.Regex?.IsMatch(body.Text) ?? true) || (textMatches?.Count() > 0 && textMatches.Contains(body.Text));
+            var textMatches = (matchPattern?.Texts ?? Array.Empty<string>()).Append(matchPattern?.Text ?? "");
+            return (matchPattern?.Regex?.IsMatch(body.Text) ?? false) || (textMatches.Where(m => m != String.Empty).Contains(body.Text));
         }
         public override Task Handle(MessageContext evt, Action next = null)
         {

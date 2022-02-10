@@ -49,6 +49,7 @@ namespace VkNetLongpollTests
                 commandsHandled++;
                 return Task.CompletedTask;
             };
+            lpHandler.HearCommand(@"/free", cmdHandler);
             lpHandler.HearCommand(new EventMessageMatchPattern { 
                 Text = "/test1", 
                 Texts = new[] { "/test2", "test/3" },
@@ -65,7 +66,7 @@ namespace VkNetLongpollTests
                 Attachments = new[] { typeof(VkNet.Model.Attachments.Photo) }
             }, cmdHandler);
 
-            var commands = new[] { "/test1", "/test2", "test/3", "/test foo", "/tesT foo", "", "not a cmd", "not a cmd2", "/msg succ", "/msg failed" };
+            var commands = new[] { "/test1", "/test2", "test/3", "/test foo", "/tesT foo", "", "not a cmd", "not a cmd2", "/msg succ", "/msg failed", "qwet", "/free" };
             foreach (var command in commands)
             {
                 lpMessageNewEvent.MessageNew.Message.Text = command;
@@ -76,7 +77,7 @@ namespace VkNetLongpollTests
             lpMessageNewEvent.MessageNew.Message.Attachments = new System.Collections.ObjectModel.ReadOnlyCollection<VkNet.Model.Attachments.Attachment>(new[] { new VkNet.Model.Attachments.Attachment { Type = typeof(VkNet.Model.Attachments.Photo) } });
             await lpHandler.Handle(lpMessageNewEvent);
 
-            Assert.AreEqual(7, commandsHandled);
+            Assert.AreEqual(8, commandsHandled);
         }
 
         [Test]
