@@ -18,7 +18,7 @@ namespace VkNetLongpollTests
         [SetUp]
         public void Setup()
         {
-            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "testData"));
+            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
             lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
             vkAPIMock = new Mock<IVkApi>();
             vkAPIMock.SetupSequence(ld => ld.Messages.Send(It.IsAny<MessagesSendParams>()))

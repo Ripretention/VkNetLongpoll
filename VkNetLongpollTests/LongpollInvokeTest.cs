@@ -14,7 +14,7 @@ namespace VkNetLongpollTests
         [SetUp]
         public void Setup()
         {
-            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "testData"));
+            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
             lpInvokeTestResponse = new VkNet.Utils.VkResponse(testDataLoader.GetJSON("LongpollUpdateResponse"));
         }
 

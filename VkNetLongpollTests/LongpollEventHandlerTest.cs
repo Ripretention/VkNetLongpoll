@@ -21,7 +21,7 @@ namespace VkNetLongpollTests
         [SetUp]
         public void Setup()
         {
-            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "testData"));
+            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
             lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
         }
 
@@ -33,9 +33,38 @@ namespace VkNetLongpollTests
             lpHandler.HearCommand("/test", testCommandHandler);
             lpHandler.HearCommand(new Regex(@"^\/test"), testCommandHandler);
             lpHandler.HearCommand(new[] { "/test", "/test2" }, testCommandHandler);
-            lpHandler.HearCommand(new EventMessageMatchPattern { Text = "/test", Texts = new[] { "/test2" }, Regex = new Regex(@"^\/test") }, testCommandHandler);
+            lpHandler.HearCommand(new CommandMatchPattern { Text = "/test", Texts = new[] { "/test2" }, Regex = new Regex(@"^\/test") }, testCommandHandler);
 
             Assert.AreEqual(4, lpHandler.CommandsCount);
+        }
+        [Test]
+        public async Task AddGroupTest()
+        {
+            int commandsHandled = 0;
+            var lpHandler = new LongpollEventHandler();
+            Func<MessageContext, Action, Task> cmdHandler = (ctx, next) =>
+            {
+                next();
+                commandsHandled++;
+                return Task.CompletedTask;
+            };
+            lpHandler.HearCommand("/must work", cmdHandler);
+
+            var group = lpHandler.CreateGroup(_ => true);
+            group.HearCommand("method1", cmdHandler);
+            group.HearCommand("method2", cmdHandler);
+            group.HearCommand("method3", cmdHandler);
+
+            lpHandler.HearCommand("/must work2", cmdHandler);
+
+            var commands = new[] { "/must work", "/test2", "method1", "!method1", "!method2", "", "!method3", "/must work2", "/msg succ", "/msg failed", "qwet", "/free" };
+            foreach (var command in commands)
+            {
+                lpMessageNewEvent.MessageNew.Message.Text = command;
+                await lpHandler.Handle(lpMessageNewEvent);
+            }
+
+            Assert.AreEqual(5, commandsHandled);
         }
 
         [Test]
@@ -50,17 +79,18 @@ namespace VkNetLongpollTests
                 return Task.CompletedTask;
             };
             lpHandler.HearCommand(@"/free", cmdHandler);
-            lpHandler.HearCommand(new EventMessageMatchPattern { 
+            lpHandler.HearCommand(new CommandMatchPattern
+            { 
                 Text = "/test1", 
                 Texts = new[] { "/test2", "test/3" },
                 Regex = new Regex(@"^\/test foo$", RegexOptions.IgnoreCase)
             }, cmdHandler);
-            lpHandler.HearCommand(new EventMessageMatchPattern
+            lpHandler.HearCommand(new CommandMatchPattern
             {
                 Regex = new Regex(@"^\/msg (.*)"),
                 Predicate = ctx => ctx.Text.Length <= 10
             }, cmdHandler);
-            lpHandler.HearCommand(new EventMessageMatchPattern
+            lpHandler.HearCommand(new CommandMatchPattern
             {
                 Text = "/copy img",
                 Attachments = new[] { typeof(VkNet.Model.Attachments.Photo) }
@@ -85,7 +115,7 @@ namespace VkNetLongpollTests
         {
             int regexGroupsCount = 0;
             var lpHandler = new LongpollEventHandler();
-            lpHandler.HearCommand(new EventMessageMatchPattern
+            lpHandler.HearCommand(new CommandMatchPattern
             {
                 Regex = new Regex(@"^\/test (foo) (\d) (s|f)", RegexOptions.IgnoreCase)
             }, (ctx, next) =>

@@ -30,6 +30,6 @@
     <ProjectReference Include="..\VkNetLongpoll\VkNetLongpoll.csproj" />
   </ItemGroup>
     <ItemGroup>
-		<None Update="testData\**\*.*" CopyToOutputDirectory="Always" />
+		<None Update="TestData\**\*.*" CopyToOutputDirectory="Always" />
 	</ItemGroup>
 </Project>
