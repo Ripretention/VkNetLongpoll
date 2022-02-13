@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace VkNetLongpoll
 {
-    public class CommandHandler
+    public class CommandHandler : ICommandHandler
     {
         protected MiddlewareChain<MessageContext> commands;
         public CommandHandler(MiddlewareChain<MessageContext> chain = null)
@@ -33,6 +33,10 @@ namespace VkNetLongpoll
 
         public int CommandsCount { get => commands.Count; }
     }
+    public interface ICommandHandler
+    {
+        public void HearCommand(CommandMatchPattern handlerParams, Func<MessageContext, Action, Task> handler);
+    }
 
     public class MesssageEventHandler : EventHandler<MessageContext, MessageNew>
     {
@@ -44,13 +48,16 @@ namespace VkNetLongpoll
         public override bool IsMatch(MessageContext message)
         {
             var body = message.Body;
-
-            bool hasAttachment = !(matchPattern?.Attachments ?? Array.Empty<Type>()).Any() || (body.Attachments.Any() && matchPattern.Attachments.All(aType => body.Attachments.Any(a => a.Type == aType)));
-            if (!hasAttachment || !(matchPattern?.Predicate?.Invoke(body) ?? true) || !(body?.Text?.Any() ?? false))
+            bool isEmptyMessage = (body?.Text?.Count() ?? 0) == 0;
+            bool hasAttachments = (body.Attachments?.Count() ?? 0) > 0;
+            bool hasMatchedAttachments = (matchPattern?.Attachments?.Count() ?? 0) != 0
+                ? hasAttachments && (matchPattern?.Attachments?.All(aType => body.Attachments.Any(attach => attach.Type == aType)) ?? true)
+                : true;
+            if (!hasMatchedAttachments || !(matchPattern?.Predicate?.Invoke(body) ?? true) || isEmptyMessage)
                 return false;
 
             var textMatches = (matchPattern?.Texts ?? Array.Empty<string>()).Append(matchPattern?.Text ?? "");
-            return (matchPattern?.Regex?.IsMatch(body.Text) ?? false) || (textMatches.Where(m => m != String.Empty).Contains(body.Text));
+            return (matchPattern?.Regex?.IsMatch(body.Text) ?? false) || textMatches.Where(m => m != String.Empty).Contains(body.Text);
         }
         public override Task Handle(MessageContext evt, Action next = null)
         {
@@ -66,6 +73,6 @@ namespace VkNetLongpoll
         public string Text { get; set; }
         public string[] Texts { get; set; }
         public Type[] Attachments { get; set; }
-        public Func<VkNet.Model.Message, bool> Predicate { get; set; }
+        public Predicate<VkNet.Model.Message> Predicate { get; set; }
     }
 }

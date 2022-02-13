@@ -49,12 +49,10 @@ namespace VkNetLongpollTests
                 return Task.CompletedTask;
             };
             lpHandler.HearCommand("/must work", cmdHandler);
-
-            var group = lpHandler.CreateGroup(_ => true);
-            group.HearCommand("method1", cmdHandler);
-            group.HearCommand("method2", cmdHandler);
-            group.HearCommand("method3", cmdHandler);
-
+            var group = lpHandler.CreateGroup(msg => msg.Text?.StartsWith("!") ?? false);
+            group.HearCommand(new Regex(@"method1"), cmdHandler);
+            group.HearCommand(new Regex(@"method2"), cmdHandler);
+            group.HearCommand(new Regex(@"method3"), cmdHandler);
             lpHandler.HearCommand("/must work2", cmdHandler);
 
             var commands = new[] { "/must work", "/test2", "method1", "!method1", "!method2", "", "!method3", "/must work2", "/msg succ", "/msg failed", "qwet", "/free" };
