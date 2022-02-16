@@ -65,10 +65,14 @@ namespace VkNetLongpoll
                     await connection.Create();
                     continue;
                 }
+                catch (Exception)
+                {
+                    throw;
+                }
 
                 connection.Ts = response.Ts;
                 foreach (var longpollEvent in response.Updates)
-                    Handler?.Handle(longpollEvent, api);
+                    await Handler?.Handle(longpollEvent, api);
             }
         }
     }

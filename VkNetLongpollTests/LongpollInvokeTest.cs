@@ -37,7 +37,7 @@ namespace VkNetLongpollTests
         }
 
         [Test]
-        public void SingleInvokeTest()
+        public async Task SingleInvokeTest()
         {
             bool eventHandled = false;
             var lp = new Longpoll(vkAPIMock.Object, 1);
@@ -48,12 +48,12 @@ namespace VkNetLongpollTests
                 return Task.CompletedTask;
             });
 
-            lp.Start();
+            await lp.Start();
 
             Assert.IsTrue(eventHandled);
         }
         [Test]
-        public void PollingLoopTest()
+        public async Task PollingLoopTest()
         {
             int invokesCount = 0;
             var lp = new Longpoll(vkAPIMock.Object, 1);
@@ -65,18 +65,33 @@ namespace VkNetLongpollTests
                 return Task.CompletedTask;
             });
 
-            lp.Start();
+            await lp.Start();
 
             Assert.AreEqual(invokesCount, 4);
         }
+
         [Test]
-        public void FailedResponseHandlingTest()
+        public void PassingExceptionFromHandlerTest()
+        {
+            var lp = new Longpoll(vkAPIMock.Object, 1);
+            lp.Handler.HearCommand(new System.Text.RegularExpressions.Regex(@".*"), ctx =>
+            {
+                lp.Stop();
+                throw new System.Exception();
+            });
+
+            var lpTask = lp.Start();
+
+            Assert.ThrowsAsync<System.Exception>(async () => await lpTask);
+        }
+        [Test]
+        public async Task FailedResponseHandlingTest()
         {
             vkAPIMock.SetupSequence(ld => ld.CallLongPollAsync(It.IsAny<string>(), It.IsAny<VkNet.Utils.VkParameters>()))
                 .ReturnsAsync(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("FailedLongpollUpdateResponse")))
                 .ReturnsAsync(lpInvokeTestResponse);
 
-            SingleInvokeTest();
+            await SingleInvokeTest();
         }
     }
 }

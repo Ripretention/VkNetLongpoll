@@ -64,7 +64,6 @@ namespace VkNetLongpollTests
 
             Assert.AreEqual(5, commandsHandled);
         }
-
         [Test]
         public async Task CommandHandlingTest()
         {
@@ -124,7 +123,20 @@ namespace VkNetLongpollTests
 
             lpMessageNewEvent.MessageNew.Message.Text = "/test foo 3 s";
             await lpHandler.Handle(lpMessageNewEvent);
+
             Assert.AreEqual(4, regexGroupsCount);
+        }
+
+        [Test]
+        public void ThrowExcetionInCommandHandlerTest()
+        {
+            var lpHandler = new LongpollEventHandler();
+            lpHandler.HearCommand("/foo", _ => throw new Exception());
+
+            lpMessageNewEvent.MessageNew.Message.Text = "/foo";
+            var handlerResult = lpHandler.Handle(lpMessageNewEvent);
+
+            Assert.ThrowsAsync<Exception>(async () => await handlerResult);
         }
 
         [Test]
