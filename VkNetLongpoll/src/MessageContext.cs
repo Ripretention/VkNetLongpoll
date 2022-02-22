@@ -17,6 +17,7 @@ namespace VkNetLongpoll
         public readonly ClientInfo ClientInfo;
         public IVkApi Api;
         public Match Match;
+        public HttpClient Client = new HttpClient();
 
         public MessageContext(GroupUpdate rawEvent) : this(rawEvent.MessageNew) { }
         public MessageContext(MessageNew rawMessage)
@@ -78,13 +79,12 @@ namespace VkNetLongpoll
         public async Task<long> SendPhoto(byte[] photo, MessagesSendParams @params = null)
         {
             var uploadServer = await Api.Photo.GetMessagesUploadServerAsync(Body.PeerId.Value);
-            var client = new HttpClient();
 
             var form = new MultipartFormDataContent();
             form.Headers.ContentType.MediaType = "multipart/form-data";
             form.Add(new ByteArrayContent(photo, 0, photo.Length), "photo", "file.jpg");
 
-            var photoResponse = await (await client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
+            var photoResponse = await (await Client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
             (@params ??= new MessagesSendParams()).Attachments = await Api.Photo.SaveMessagesPhotoAsync(photoResponse);
             return await SendAsync(@params);
         }
@@ -94,13 +94,12 @@ namespace VkNetLongpoll
         public async Task<long> SendDoc(DocumentSource doc, MessagesSendParams @params = null, DocMessageType docType = null)
         {
             var uploadServer = await Api.Docs.GetMessagesUploadServerAsync(Body.PeerId.Value, docType ?? DocMessageType.Doc);
-            var client = new HttpClient();
 
             var form = new MultipartFormDataContent();
             form.Headers.ContentType.MediaType = "multipart/form-data";
             form.Add(new ByteArrayContent(doc.Body, 0, doc.Body.Length), doc.Name, $"{doc.Name}.{doc.Type.Replace('.', '\0')}");
 
-            var response = await (await client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
+            var response = await (await Client.PostAsync(uploadServer.UploadUrl, form)).Content.ReadAsStringAsync();
             (@params ??= new MessagesSendParams()).Attachments = (await Api.Docs.SaveAsync(response, doc.Name, "")).Select(a => a.Instance);
             return await SendAsync(@params);
         }
@@ -113,7 +112,7 @@ namespace VkNetLongpoll
         public Task<long> SendAudioMessage(byte[] audio, string type, MessagesSendParams @params = null) =>
             type != "mp3" && type != "ogg"
                 ? throw new ArgumentException("Invalid audio type. VKAPI supports only mp3 and ogg as type for an audio message.")
-                : SendDoc(new DocumentSource { Type = type, Body = audio }, @params);
+                : SendDoc(new DocumentSource { Type = type, Body = audio }, @params, DocMessageType.AudioMessage);
 
         public bool Edit(string text) => Edit(new MessageEditParams { Message = text });
         public bool Edit(MessageEditParams @params)

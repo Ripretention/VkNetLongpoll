@@ -1,12 +1,15 @@
 ﻿using Moq;
-using System;
+using Moq.Protected;
 using VkNetLongpoll;
 using NUnit.Framework;
+using System.Net.Http;
 using VkNet.Abstractions;
-using VkNet.Enums.SafetyEnums;
+using System.Threading.Tasks;
 using VkNet.Model.GroupUpdate;
-using VkNet.Model.RequestParams;
+using VkNet.Enums.SafetyEnums;
 using VkNetLongpollTests.Utils;
+using VkNet.Model.RequestParams;
+using System.Collections.Generic;
 
 namespace VkNetLongpollTests
 {
@@ -21,7 +24,8 @@ namespace VkNetLongpollTests
             testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
             lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
             vkAPIMock = new Mock<IVkApi>();
-            vkAPIMock.SetupSequence(ld => ld.Messages.Send(It.IsAny<MessagesSendParams>()))
+            vkAPIMock
+                .SetupSequence(ld => ld.Messages.Send(It.IsAny<MessagesSendParams>()))
                 .Returns(1)
                 .Returns(2);
         }
@@ -51,6 +55,47 @@ namespace VkNetLongpollTests
 
             Assert.AreEqual(1, results[0]);
             Assert.AreEqual(2, results[1]);
+        }
+
+        [Test]
+        public async Task SendDoc()
+        {
+            var httpClientHandlerMock = new Mock<HttpClientHandler>();
+            httpClientHandlerMock
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage 
+                { 
+                    StatusCode = System.Net.HttpStatusCode.OK, 
+                    Content = new StringContent("somedata") 
+                });
+            vkAPIMock
+                .Setup(ld => ld.Docs.GetMessagesUploadServerAsync(It.IsAny<long>(), It.IsAny<DocMessageType>()))
+                .ReturnsAsync(new VkNet.Model.UploadServerInfo
+                {
+                    UploadUrl = "https://vkapitest/fefwefweDFscsdsF",
+                    AlbumId = 0,
+                    UserId = 0
+                });
+            vkAPIMock
+                .Setup(ld => ld.Docs.SaveAsync(It.Is<string>(v => v == "somedata"), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new List<VkNet.Model.Attachments.Attachment>() 
+                { 
+                    new VkNet.Model.Attachments.Attachment
+                    {
+                        Type = typeof(VkNet.Model.Attachments.AudioMessage)
+                    }
+                }.AsReadOnly());
+            vkAPIMock
+                .Setup(ld => ld.Messages.SendAsync(It.IsAny<MessagesSendParams>()))
+                .ReturnsAsync(43);
+            MessageContext ctx = new MessageContext(lpMessageNewEvent);
+            ctx.Api = vkAPIMock.Object;
+            ctx.Client = new HttpClient(httpClientHandlerMock.Object);
+
+            var response = await ctx.SendDoc(new DocumentSource { Body = new byte[0], Name = "file", Type = "mp3" }, "doc message");
+
+            Assert.AreEqual(43, response);
         }
     }
 }
