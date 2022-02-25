@@ -15,8 +15,8 @@ namespace VkNetLongpoll
         private readonly IVkApi api;
         private readonly ulong groupId;
         private LongpollConnection connection;
-        private static Mutex mutex = new Mutex();
         public LongpollEventHandler Handler = new LongpollEventHandler();
+        private static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
         public Longpoll(IVkApi api, long groupId)
         {
             if (api == null)
@@ -26,26 +26,28 @@ namespace VkNetLongpoll
 
             this.api = api;
             this.groupId = (ulong)Math.Abs(groupId);
-            connection = new LongpollConnection(ref this.api, this.groupId);
+            connection = new LongpollConnection(this.api, this.groupId);
         }
-
         public async Task Start() 
         {
             if (isStarted) return;
-
-            mutex.WaitOne();
+            await semaphoreSlim.WaitAsync();
 
             isStarted = true;
-            await connection.Create();
-            await runPollingLoop();
-
-            mutex.ReleaseMutex();
+            try
+            {
+                await connection.Create();
+                await runPollingLoop();
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
         }        
         public void Stop()
         {
             isStarted = false;
         }
-
         private async Task runPollingLoop()
         {            
             while (isStarted)
@@ -71,8 +73,8 @@ namespace VkNetLongpoll
                 }
 
                 connection.Ts = response.Ts;
-                foreach (var longpollEvent in response.Updates)
-                    await Handler?.Handle(longpollEvent, api);
+                foreach (var update in response.Updates)
+                    await Handler?.Handle(update);       
             }
         }
     }
@@ -85,7 +87,7 @@ namespace VkNetLongpoll
         public string Ts { get; set; }
         public string Key { get; private set; }
         public string Server { get; private set; }
-        public LongpollConnection(ref IVkApi api, ulong groupId)
+        public LongpollConnection(IVkApi api, ulong groupId)
         {
             this.api = api;
             this.groupId = groupId;

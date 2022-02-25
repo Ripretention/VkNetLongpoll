@@ -13,7 +13,8 @@ namespace VkNetLongpoll
         public LongpollGroupUpdateEventHandler(GroupUpdateType eventType, Func<T, Action, Task> handler) : base(handler)
         {
             this.eventType = eventType;
-            eventFieldName = typeof(GroupUpdateType).GetFields()
+            eventFieldName = typeof(GroupUpdateType)
+                .GetFields()
                 .Where(prop => prop.GetValue(null).ToString() == eventType.ToString())
                 .Select(prop => prop?.Name)
                 .FirstOrDefault();

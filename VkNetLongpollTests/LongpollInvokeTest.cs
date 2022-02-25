@@ -1,46 +1,46 @@
 ﻿using Moq;
 using VkNetLongpoll;
 using NUnit.Framework;
-using System.Threading.Tasks;
 using VkNet.Abstractions;
+using System.Threading.Tasks;
 using VkNetLongpollTests.Utils;
+using System.Text.RegularExpressions;
 
 namespace VkNetLongpollTests
 {
     public class LongpollInvokeTest
     {
-        private TestDataLoader testDataLoader;
-        private VkNet.Utils.VkResponse lpInvokeTestResponse;
+        private static TestDataLoader testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
+        private VkNet.Utils.VkResponse lpInvokeTestResponse = new VkNet.Utils.VkResponse(testDataLoader.GetJSON("LongpollUpdateResponse"));
+        private Mock<IVkApi> vkAPIMock;
+        private Longpoll lp;
         [SetUp]
         public void Setup()
         {
-            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
-            lpInvokeTestResponse = new VkNet.Utils.VkResponse(testDataLoader.GetJSON("LongpollUpdateResponse"));
-        }
+            vkAPIMock = new Mock<IVkApi>();
+            vkAPIMock
+                .Setup(ld => ld.Groups.GetLongPollServerAsync(It.IsAny<ulong>()))
+                .ReturnsAsync(new VkNet.Model.LongPollServerResponse()
+                {
+                    Key = "test",
+                    Ts = "1",
+                    Pts = 1,
+                    Server = "https://test.com"
+                });
+            vkAPIMock
+                .Setup(ld => ld.CallLongPollAsync(It.IsAny<string>(), It.IsAny<VkNet.Utils.VkParameters>()))
+                .ReturnsAsync(lpInvokeTestResponse);
+            vkAPIMock
+                .Setup(ld => ld.IsAuthorized)
+                .Returns(true);
 
-        private Mock<IVkApi> vkAPIMock;
-        [SetUp]
-        public void VkAPISetup()
-        {
-            var mock = new Mock<IVkApi>();
-            mock.Setup(ld => ld.Groups.GetLongPollServerAsync(It.IsAny<ulong>())).ReturnsAsync(new VkNet.Model.LongPollServerResponse()
-            {
-                Key = "test",
-                Ts = "1",
-                Pts = 1,
-                Server = "https://test.com"
-            });
-            mock.Setup(ld => ld.CallLongPollAsync(It.IsAny<string>(), It.IsAny<VkNet.Utils.VkParameters>())).ReturnsAsync(lpInvokeTestResponse);
-            mock.Setup(ld => ld.IsAuthorized).Returns(true);
-
-            vkAPIMock = mock;
+            lp = new Longpoll(vkAPIMock.Object, 1);
         }
 
         [Test]
         public async Task SingleInvokeTest()
         {
             bool eventHandled = false;
-            var lp = new Longpoll(vkAPIMock.Object, 1);
             lp.Handler.On<VkNet.Model.GroupUpdate.MessageNew>(VkNet.Enums.SafetyEnums.GroupUpdateType.MessageNew, evt =>
             {
                 lp.Stop();
@@ -56,7 +56,6 @@ namespace VkNetLongpollTests
         public async Task PollingLoopTest()
         {
             int invokesCount = 0;
-            var lp = new Longpoll(vkAPIMock.Object, 1);
             lp.Handler.On<VkNet.Model.GroupUpdate.MessageNew>(VkNet.Enums.SafetyEnums.GroupUpdateType.MessageNew, evt =>
             {
                 if (invokesCount == 3)
@@ -69,12 +68,32 @@ namespace VkNetLongpollTests
 
             Assert.AreEqual(invokesCount, 4);
         }
+        [Test]
+        public async Task AsyncHandlingTest()
+        {
+            long commandExecuteOffset = 0;
+            lp.Handler.HearCommand(new Regex(@".*"), async (ctx, next) =>
+            {
+                commandExecuteOffset = System.DateTime.Now.Millisecond;
+                await Task.Delay(300);
+                next();
+            });
+            lp.Handler.HearCommand(new Regex(@".*"), _ =>
+            {
+                commandExecuteOffset = System.DateTime.Now.Millisecond- commandExecuteOffset;
+                lp.Stop();
+                return Task.CompletedTask;
+            });
+
+            await lp.Start();
+
+            Assert.IsTrue(commandExecuteOffset <= 600);
+        }
 
         [Test]
         public void PassingExceptionFromHandlerTest()
         {
-            var lp = new Longpoll(vkAPIMock.Object, 1);
-            lp.Handler.HearCommand(new System.Text.RegularExpressions.Regex(@".*"), ctx =>
+            lp.Handler.HearCommand(new Regex(@".*"), ctx =>
             {
                 lp.Stop();
                 throw new System.Exception();
@@ -87,7 +106,8 @@ namespace VkNetLongpollTests
         [Test]
         public async Task FailedResponseHandlingTest()
         {
-            vkAPIMock.SetupSequence(ld => ld.CallLongPollAsync(It.IsAny<string>(), It.IsAny<VkNet.Utils.VkParameters>()))
+            vkAPIMock
+                .SetupSequence(ld => ld.CallLongPollAsync(It.IsAny<string>(), It.IsAny<VkNet.Utils.VkParameters>()))
                 .ReturnsAsync(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("FailedLongpollUpdateResponse")))
                 .ReturnsAsync(lpInvokeTestResponse);
 

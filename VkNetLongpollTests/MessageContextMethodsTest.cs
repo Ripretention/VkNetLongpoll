@@ -15,14 +15,12 @@ namespace VkNetLongpollTests
 {
     public class MessageContextMethodsTest
     {
-        private GroupUpdate lpMessageNewEvent;
-        private TestDataLoader testDataLoader;
+        private static TestDataLoader testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
+        private GroupUpdate lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
         private Mock<IVkApi> vkAPIMock;
         [SetUp]
         public void Setup()
         {
-            testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
-            lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
             vkAPIMock = new Mock<IVkApi>();
             vkAPIMock
                 .SetupSequence(ld => ld.Messages.Send(It.IsAny<MessagesSendParams>()))
