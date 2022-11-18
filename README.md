@@ -3,6 +3,8 @@ VkNet Longpoll - This is flexible plugin VkNet that allows you to easily interac
 
 ##  Example usage
 ```c#
+using VkNetLongpoll;
+using VkNetLongpoll.Contexts;
 
 var api = new VkApi();
 api.Authorize(new ApiAuthParams { AccessToken = ACCESS_TOKEN });

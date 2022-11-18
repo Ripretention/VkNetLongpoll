@@ -8,11 +8,11 @@ namespace VkNetLongpoll.Tests.Utils
     public class TestDataLoader
     {
         private readonly string path;
-        public TestDataLoader(string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData"))
+        public TestDataLoader(string path = null)
         {
-            if (!Directory.Exists(path))
+            this.path = path ?? Path.Combine(Directory.GetCurrentDirectory(), "TestData");
+            if (!Directory.Exists(this.path))
                 throw new ArgumentException("Invlid path in TestDataLoader");
-            this.path = path;
         }
 
         public JToken loadJSON(string fileName)

@@ -1,4 +1,5 @@
-﻿namespace VkNetLongpoll.Tests;
+﻿using VkNetLongpoll.Utils;
+namespace VkNetLongpoll.Tests;
 public class MiddlewareChainTest
 {
     [Test]

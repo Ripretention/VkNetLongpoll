@@ -1,4 +1,6 @@
 using System;
+using VkNetLongpoll.Contexts;
+using VkNetLongpoll.Handlers;
 using System.Threading.Tasks;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Model.GroupUpdate;
@@ -13,7 +15,7 @@ public class HandlersTest
         next();
         return Task.CompletedTask;
     };
-    private TestDataLoader testDataLoader = new TestDataLoader();
+    private static TestDataLoader testDataLoader = new TestDataLoader();
     private GroupUpdate lpMessageNewEvent = GroupUpdate.FromJson(
         new VkNet.Utils.VkResponse(
             testDataLoader.loadJSON("NewMessageUpdate")

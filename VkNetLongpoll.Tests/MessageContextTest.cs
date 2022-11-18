@@ -1,4 +1,5 @@
 ﻿using Moq;
+using VkNetLongpoll.Contexts;
 using Moq.Protected;
 using System.Net.Http;
 using VkNet.Abstractions;
