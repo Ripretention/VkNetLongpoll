@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VkNetLongpoll", "VkNetLongpoll\VkNetLongpoll.csproj", "{1D4126DC-E0A7-43AE-A408-3B85CD3499E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VkNetLongpoll.Tests", "VkNetLongpoll.Tests\VkNetLongpoll.Tests.csproj", "{E60A1374-2D31-4654-8940-983D0302234C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1D4126DC-E0A7-43AE-A408-3B85CD3499E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D4126DC-E0A7-43AE-A408-3B85CD3499E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D4126DC-E0A7-43AE-A408-3B85CD3499E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D4126DC-E0A7-43AE-A408-3B85CD3499E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E60A1374-2D31-4654-8940-983D0302234C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E60A1374-2D31-4654-8940-983D0302234C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E60A1374-2D31-4654-8940-983D0302234C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E60A1374-2D31-4654-8940-983D0302234C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

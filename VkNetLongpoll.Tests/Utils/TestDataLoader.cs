@@ -1,9 +1,9 @@
 ﻿using System;
-using Newtonsoft.Json;
 using System.IO;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace VkNetLongpollTests.Utils
+namespace VkNetLongpoll.Tests.Utils
 {
     public class TestDataLoader
     {

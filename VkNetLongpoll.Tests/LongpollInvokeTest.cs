@@ -3,10 +3,10 @@ using VkNetLongpoll;
 using NUnit.Framework;
 using VkNet.Abstractions;
 using System.Threading.Tasks;
-using VkNetLongpollTests.Utils;
+using VkNetLongpoll.Tests.Utils;
 using System.Text.RegularExpressions;
 
-namespace VkNetLongpollTests
+namespace VkNetLongpoll.Tests
 {
     public class LongpollInvokeTest
     {

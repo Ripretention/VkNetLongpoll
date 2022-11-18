@@ -5,15 +5,21 @@ using VkNet.Exception;
 using System.Threading;
 using VkNet.Abstractions;
 using System.Threading.Tasks;
+using VkNet.Model.GroupUpdate;
+using System.Collections.Generic;
 
 namespace VkNetLongpoll
 {
     public class Longpoll
     {
-        public bool isStarted { get; private set; } = false;
+        public bool IsStarted 
+        { 
+            get => cts != null && !cts.IsCancellationRequested; 
+        }
 
         private readonly IVkApi api;
         private readonly ulong groupId;
+        private CancellationTokenSource cts;
         private LongpollConnection connection;
         public LongpollEventHandler Handler = new LongpollEventHandler();
         private static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
@@ -30,14 +36,17 @@ namespace VkNetLongpoll
         }
         public async Task Start() 
         {
-            if (isStarted) return;
+            if (IsStarted) return;
             await semaphoreSlim.WaitAsync();
 
-            isStarted = true;
+            cts = new CancellationTokenSource();
             try
             {
                 await connection.Create();
-                await runPollingLoop();
+                await runPollingLoop(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
@@ -46,11 +55,11 @@ namespace VkNetLongpoll
         }        
         public void Stop()
         {
-            isStarted = false;
+            cts.Cancel();
         }
-        private async Task runPollingLoop()
+        private async Task runPollingLoop(CancellationToken token)
         {            
-            while (isStarted)
+            while (!token.IsCancellationRequested)
             {
                 BotsLongPollHistoryResponse response;
                 try
@@ -71,10 +80,21 @@ namespace VkNetLongpoll
                 {
                     throw;
                 }
-
+                finally
+                {
+                    token.ThrowIfCancellationRequested();
+                }
+                
                 connection.Ts = response.Ts;
-                foreach (var update in response.Updates)
-                    await Handler?.Handle(update);       
+                await handleUpdates(response.Updates, token);
+            }
+        }
+        private async Task handleUpdates(IEnumerable<GroupUpdate> updates, CancellationToken token)
+        {
+            foreach (var update in updates)
+            {
+                token.ThrowIfCancellationRequested();
+                await Handler?.Handle(update);
             }
         }
     }

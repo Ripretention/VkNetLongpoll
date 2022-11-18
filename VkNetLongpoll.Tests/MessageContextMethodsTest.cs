@@ -7,11 +7,11 @@ using VkNet.Abstractions;
 using System.Threading.Tasks;
 using VkNet.Model.GroupUpdate;
 using VkNet.Enums.SafetyEnums;
-using VkNetLongpollTests.Utils;
+using VkNetLongpoll.Tests.Utils;
 using VkNet.Model.RequestParams;
 using System.Collections.Generic;
 
-namespace VkNetLongpollTests
+namespace VkNetLongpoll.Tests
 {
     public class MessageContextMethodsTest
     {

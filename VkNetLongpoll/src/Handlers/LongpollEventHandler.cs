@@ -22,11 +22,8 @@ namespace VkNetLongpoll
             message.Api = api;
             await commands.ExecuteAsync(message);
         }
-
-        public GroupCommandHandler CreateGroup(Predicate<VkNet.Model.Message> predicate)
-        {
-            return new GroupCommandHandler(predicate, commands);
-        }
+        public GroupCommandHandler CreateGroup(Predicate<VkNet.Model.Message> predicate) =>
+            new GroupCommandHandler(predicate, commands);
 
         public void On<T>(GroupUpdateType eventType, Func<T, Action, Task> handler) =>
             events.Use(new LongpollGroupUpdateEventHandler<T>(eventType, handler));

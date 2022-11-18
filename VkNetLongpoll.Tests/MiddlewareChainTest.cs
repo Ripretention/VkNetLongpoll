@@ -1,7 +1,7 @@
 ﻿using VkNetLongpoll;
 using NUnit.Framework;
 
-namespace VkNetLongpollTests
+namespace VkNetLongpoll.Tests
 {
     public class MiddlewareChainTest
     {

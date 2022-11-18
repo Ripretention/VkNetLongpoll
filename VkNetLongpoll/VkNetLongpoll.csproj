@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Authors>Ripretention</Authors>
     <Description>VkNet Longpoll - This is flexible plugin VkNet that allows you to easily interact with VKontakte API Longpoll.</Description>
     <Copyright></Copyright>
