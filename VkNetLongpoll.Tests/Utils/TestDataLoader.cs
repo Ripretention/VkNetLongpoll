@@ -8,14 +8,14 @@ namespace VkNetLongpoll.Tests.Utils
     public class TestDataLoader
     {
         private readonly string path;
-        public TestDataLoader(string path)
+        public TestDataLoader(string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData"))
         {
             if (!Directory.Exists(path))
                 throw new ArgumentException("Invlid path in TestDataLoader");
             this.path = path;
         }
 
-        public JToken GetJSON(string fileName)
+        public JToken loadJSON(string fileName)
         {
             var filePath = path + "\\" + fileName + ".json";
             if (!File.Exists(filePath))

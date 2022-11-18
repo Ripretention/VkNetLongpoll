@@ -1,6 +1,4 @@
 using System;
-using VkNetLongpoll;
-using NUnit.Framework;
 using System.Threading.Tasks;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Model.GroupUpdate;
@@ -8,21 +6,19 @@ using VkNetLongpoll.Tests.Utils;
 using System.Text.RegularExpressions;
 
 namespace VkNetLongpoll.Tests;
-public class LongpollEventHandlerTest
+public class HandlersTest
 {
-    private GroupUpdate lpMessageNewEvent;
     private Func<MessageContext, Action, Task> testCommandHandler = (_, next) =>
     {
         next();
         return Task.CompletedTask;
     };
-    private TestDataLoader testDataLoader;
-    [SetUp]
-    public void Setup()
-    {
-        testDataLoader = new TestDataLoader(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestData"));
-        lpMessageNewEvent = GroupUpdate.FromJson(new VkNet.Utils.VkResponse(testDataLoader.GetJSON("NewMessageUpdate")));
-    }
+    private TestDataLoader testDataLoader = new TestDataLoader();
+    private GroupUpdate lpMessageNewEvent = GroupUpdate.FromJson(
+        new VkNet.Utils.VkResponse(
+            testDataLoader.loadJSON("NewMessageUpdate")
+        )
+    );
 
     [Test]
     public void AddCommandTest()
@@ -92,7 +88,12 @@ public class LongpollEventHandlerTest
             Attachments = new[] { typeof(VkNet.Model.Attachments.Photo) }
         }, cmdHandler);
 
-        var commands = new[] { "/test1", "/test2", "test/3", "/test foo", "/tesT foo", "", "not a cmd", "not a cmd2", "/msg succ", "/msg failed", "qwet", "/free" };
+        var commands = new[] 
+        { 
+            "/test1", "/test2", "test/3", "/test foo", 
+            "/tesT foo", "", "not a cmd", "not a cmd2", 
+            "/msg succ", "/msg failed", "qwet", "/free" 
+        };
         foreach (var command in commands)
         {
             lpMessageNewEvent.MessageNew.Message.Text = command;
@@ -100,7 +101,15 @@ public class LongpollEventHandlerTest
         }
         lpMessageNewEvent.MessageNew.Message.Text = "/copy img";
         await lpHandler.Handle(lpMessageNewEvent);
-        lpMessageNewEvent.MessageNew.Message.Attachments = new System.Collections.ObjectModel.ReadOnlyCollection<VkNet.Model.Attachments.Attachment>(new[] { new VkNet.Model.Attachments.Attachment { Type = typeof(VkNet.Model.Attachments.Photo) } });
+        lpMessageNewEvent.MessageNew.Message.Attachments = new System.Collections.ObjectModel.ReadOnlyCollection<VkNet.Model.Attachments.Attachment>(
+            new[] 
+            { 
+                new VkNet.Model.Attachments.Attachment 
+                { 
+                    Type = typeof(VkNet.Model.Attachments.Photo) 
+                } 
+            }
+        );
         await lpHandler.Handle(lpMessageNewEvent);
 
         Assert.AreEqual(8, commandsHandled);
